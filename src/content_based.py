@@ -70,20 +70,31 @@ class ContentBased:
 
         top_k_casts = 3
         user_latent_feature = self._get_user_latent_vector(top_k_casts, test_user)
-        user_sim_matrix = np.array([self._get_similarity(user_latent_feature.iloc[0], movie_features)[0] for _, movie_features in self._movies_latent_feature.iterrows()])
 
-        rmi = np.argsort(user_sim_matrix)[::-1]
+        all_similarities = []
+        for _, movie_features in self._movies_latent_feature.iterrows():
+            sim_components = self._get_similarity(user_latent_feature.iloc[0], movie_features)
+            all_similarities.append(sim_components)
+        
+        all_similarities = np.array(all_similarities)  
+        final_similarity = all_similarities[:, 0]
 
-        similarities = user_sim_matrix[rmi]
-
+        rmi = np.argsort(final_similarity)[::-1]
+        
         results_df = self._df.iloc[rmi][['title', 'genres', 'wr', 'id']].copy()
         results_df.set_index(results_df['id'], inplace=True)
         results_df.drop('id', axis=1, inplace=True)
-        results_df['similarity'] = similarities
+
+        results_df['final_similarity'] = final_similarity[rmi]
+        results_df['genres_similarity'] = all_similarities[rmi, 1]
+        results_df['cast_similarity'] = all_similarities[rmi, 2]
+        results_df['crew_similarity'] = all_similarities[rmi, 3]
+        results_df['keyword_similarity'] = all_similarities[rmi, 4]
+        results_df['overview_similarity'] = all_similarities[rmi, 5]
 
         # TODO: OKAY THIS CONSTANT
         alpha = 0.25
-        results_df['ranking_metrics'] = (results_df['wr'] / 10) * alpha + results_df['similarity'] * (1 - alpha)
+        results_df['ranking_metrics'] = (results_df['wr'] / 10) * alpha + results_df['final_similarity'] * (1 - alpha)
         return results_df[:n_top_movies]
 
     def _get_user_latent_vector(self, top_k, user_df):
@@ -101,9 +112,10 @@ class ContentBased:
         if user['rating'].std() != 0:
             for idx, row in user.iterrows():
                 movie_id = row['movieId']
-                # user_movie_latents.loc[movie_id, :] *= row['rating'] - user_mean_rates
                 # I don't want to use the user_mean_rates normalization
-                user_movie_latents.loc[movie_id, :] *= row['rating']
+                # user_movie_latents.loc[movie_id, :] *= row['rating'] - user_mean_rates
+                # NOTE: deivide by 5  
+                user_movie_latents.loc[movie_id, :] *= row['rating'] / 5
 
         n_movie_rates = user_movie_latents.shape[0]
         
