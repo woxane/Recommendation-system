@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from recommender import Recommender
+from src.recommender import Recommender
 
 # Initialize recommender
 @st.cache_resource
