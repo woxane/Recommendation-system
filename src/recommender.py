@@ -10,12 +10,13 @@ class Recommender:
         links = pd.read_csv('../dataset/links_small.csv')
         self.md = pd.read_csv('../dataset/movies_metadata.csv')
         ratings = pd.read_csv('../dataset/ratings_small.csv')
+        md_copy = self.md.copy()
 
         self.collabrative_filtering = CollabrativeFiltering(
             credits_df=credits,
             keywords_df=keywords,
             links_df=links,
-            md_df=self.md,
+            md_df=md_copy,
             ratings_df=ratings,
         )
 
@@ -23,14 +24,14 @@ class Recommender:
             credits_df=credits,
             keywords_df=keywords,
             links_df=links,
-            md_df=self.md,
+            md_df=md_copy,
             ratings_df=ratings,
         )
 
         self.md['genres'] = self.md['genres'].fillna('[]').apply(literal_eval)
         self.md['genres'] = self.md['genres'].apply(lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
 
-        self._all_genres = self.md['genres'].explode().unique()
+        self.all_genres = self.md['genres'].explode().unique()
 
     def recommend(self, movie_ids, ratings, n_recommendation, alpha=0.25):
         # Raw recommendation uses for metrics like precision and etc...
