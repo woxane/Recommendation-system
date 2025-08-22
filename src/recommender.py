@@ -1,15 +1,15 @@
-from content_based import ContentBased
-from collabrative_filtering import CollabrativeFiltering
+from src.content_based import ContentBased
+from src.collabrative_filtering import CollabrativeFiltering
 import pandas as pd
 from ast import literal_eval
 
 class Recommender:
     def __init__(self):
-        credits = pd.read_csv('../dataset/credits.csv')
-        keywords = pd.read_csv('../dataset/keywords.csv')
-        links = pd.read_csv('../dataset/links_small.csv')
-        self.md = pd.read_csv('../dataset/movies_metadata.csv')
-        ratings = pd.read_csv('../dataset/ratings_small.csv')
+        credits = pd.read_csv('dataset/credits.csv')
+        keywords = pd.read_csv('dataset/keywords.csv')
+        links = pd.read_csv('dataset/links_small.csv')
+        self.md = pd.read_csv('dataset/movies_metadata.csv')
+        ratings = pd.read_csv('dataset/ratings_small.csv')
         md_copy = self.md.copy()
 
         self.collabrative_filtering = CollabrativeFiltering(
