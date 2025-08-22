@@ -56,7 +56,7 @@ class ContentBased:
         })
 
         top_k_casts = 3
-        user_latent_feature = self._get_user_latent_vector(top_k_casts, self._df)
+        user_latent_feature = self._get_user_latent_vector(top_k_casts, test_user)
         user_sim_matrix = np.array([self._get_similarity(user_latent_feature.iloc[0], movie_features)[0] for _, movie_features in self._movies_latent_feature.iterrows()])
 
         rmi = np.argsort(user_sim_matrix)[::-1]
@@ -69,7 +69,7 @@ class ContentBased:
         results_df['similarity'] = similarities
 
         # TODO: OKAY THIS CONSTANT
-        alpha = 0.50
+        alpha = 0.25
         results_df['ranking_metrics'] = (results_df['wr'] / 10) * alpha + results_df['similarity'] * (1 - alpha)
         return results_df
 
