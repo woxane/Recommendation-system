@@ -1,20 +1,21 @@
 from content_based import ContentBased
 from collabrative_filtering import CollabrativeFiltering
 import pandas as pd
+from ast import literal_eval
 
 class Recommender:
     def __init__(self):
         credits = pd.read_csv('../dataset/credits.csv')
         keywords = pd.read_csv('../dataset/keywords.csv')
         links = pd.read_csv('../dataset/links_small.csv')
-        md = pd.read_csv('../dataset/movies_metadata.csv')
+        self.md = pd.read_csv('../dataset/movies_metadata.csv')
         ratings = pd.read_csv('../dataset/ratings_small.csv')
 
         self.collabrative_filtering = CollabrativeFiltering(
             credits_df=credits,
             keywords_df=keywords,
             links_df=links,
-            md_df=md,
+            md_df=self.md,
             ratings_df=ratings,
         )
 
@@ -22,9 +23,14 @@ class Recommender:
             credits_df=credits,
             keywords_df=keywords,
             links_df=links,
-            md_df=md,
+            md_df=self.md,
             ratings_df=ratings,
         )
+
+        self.md['genres'] = self.md['genres'].fillna('[]').apply(literal_eval)
+        self.md['genres'] = self.md['genres'].apply(lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
+
+        self._all_genres = self.md['genres'].explode().unique()
 
     def recommend(self, movie_ids, ratings, n_recommendation, alpha=0.25):
         # Raw recommendation uses for metrics like precision and etc...
@@ -48,3 +54,29 @@ class Recommender:
         recommendations = merged_recommendations[:n_recommendation].sort_values(by='wr', ascending=False)
 
         return recommendations, raw_recommendations
+    
+
+    def cold_start_recommend(self, genres, top_n=50, percentile=0.85):
+        filtered_row_ids = []
+        
+        for idx, row in self.md.iterrows():
+            if all(genre in row['genres'] for genre in genres):
+                filtered_row_ids.append(idx)
+        
+        filtered_row_ids = list(set(filtered_row_ids))
+        
+        df = self.md.loc[filtered_row_ids]
+        
+        vote_counts = df[df['vote_count'].notnull()]['vote_count'].astype('int')
+        vote_averages = df[df['vote_average'].notnull()]['vote_average'].astype('int')
+        C = vote_averages.mean()
+        m = vote_counts.quantile(percentile)
+        
+        qualified = df[(df['vote_count'] >= m) & (df['vote_count'].notnull()) & (df['vote_average'].notnull())][['id', 'title', 'genres', 'vote_count', 'vote_average']]
+        qualified['vote_count'] = qualified['vote_count'].astype('int')
+        qualified['vote_average'] = qualified['vote_average'].astype('int')
+        
+        qualified['wr'] = qualified.apply(lambda x: (x['vote_count']/(x['vote_count']+m) * x['vote_average']) + (m/(m+x['vote_count']) * C), axis=1)
+        qualified = qualified.sort_values('wr', ascending=False).head(250)
+        
+        return qualified
