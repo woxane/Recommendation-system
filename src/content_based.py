@@ -7,6 +7,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import jaccard_score
 from scipy.sparse import csr_matrix
 from sentence_transformers import SentenceTransformer
+import os
+import pickle
 
 class ContentBased:
     def __init__(
@@ -18,6 +20,8 @@ class ContentBased:
             ratings_df,
             vote_count_cut_off_quantile = 0.8
     ):
+        self._LATENT_PATH = "movies_latent_feature.pkl"
+
         self._vote_count_cut_off_quantile = vote_count_cut_off_quantile
 
         # Those ends with *_df are dataset that located in dataset directory from root
@@ -41,8 +45,16 @@ class ContentBased:
         self._all_supported_directors, self._director_index_map = self._get_supported_directors()
 
 
-        print("[CONTENT_BASED] Getting movies latent vectors.")
-        self._movies_latent_feature = self._get_movie_latent_vector(self._df)
+        if os.path.exists(self._LATENT_PATH):
+            print("[CONTENT_BASED] Loading existing movies latent feature from disk.")
+            with open(self._LATENT_PATH, "rb") as f:
+                self._movies_latent_feature = pickle.load(f)
+        else:
+            print("[CONTENT_BASED] Generating movies latent feature and saving to disk.")
+            self._movies_latent_feature = self._get_movie_latent_vector(self._df)
+            with open(self._LATENT_PATH, "wb") as f:
+                pickle.dump(self._movies_latent_feature, f)
+
         print("[CONTENT_BASED] DONE!")
 
     def recommend(self, movie_ids, ratings, n_top_movies=50):
