@@ -1,10 +1,7 @@
 import pandas as pd
-import seaborn as snas
-import matplotlib.pyplot as plt
 import numpy as np
 from ast import literal_eval # use literal eval instead of eval
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.metrics import jaccard_score
 from scipy.sparse import csr_matrix
 from sentence_transformers import SentenceTransformer
 import os

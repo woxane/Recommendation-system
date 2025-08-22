@@ -1,9 +1,5 @@
 import pandas as pd
-import numpy as np
-from collections import Counter
 from surprise import Reader, SVD, Dataset
-from tqdm import tqdm
-from ast import literal_eval
 
 
 class CollabrativeFiltering:
