@@ -77,6 +77,19 @@ class Recommender:
         qualified['vote_average'] = qualified['vote_average'].astype('int')
         
         qualified['wr'] = qualified.apply(lambda x: (x['vote_count']/(x['vote_count']+m) * x['vote_average']) + (m/(m+x['vote_count']) * C), axis=1)
-        qualified = qualified.sort_values('wr', ascending=False).head(250)
+        qualified = qualified.sort_values('wr', ascending=False).head(top_n)
         
         return qualified
+    
+
+    def imdb_to_movie_id(self, imdb_id):
+        movie_id = self.md[self.md['imdb_id'] == imdb_id]['id'].values
+        if len(movie_id) == 0:
+            return None
+        return int(movie_id[0])
+
+    def get_title_by_movie_id(self, movie_id):
+        title =  self.md[self.md['id'] == str(movie_id)]['title'].values
+        if len(title) == 0:
+            return None
+        return title[0]
