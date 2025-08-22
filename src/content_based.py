@@ -276,7 +276,7 @@ class ContentBased:
             self._self._md_df[eval_column] = self._self._md_df[eval_column].fillna('[]').apply(literal_eval)
             self._md_df[eval_column] = self._md_df[eval_column].apply(lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
 
-        bad_data = self._md_df[self._md_df['iself._md_dfb_id'] == '0'].index
+        bad_data = self._md_df[self._md_df['imdb_id'] == '0'].index
         self._md_df.drop(bad_data, inplace=True)
 
         cols_to_float = ['revenue', 'vote_count', 'vote_average', 'budget', 'popularity']
