@@ -28,13 +28,12 @@ class ContentBased:
         self._md_df = md_df
         self._ratings_df = ratings_df
 
-        # Clean dataset
-        self._df = self._df_clean()
-
         # Dataset data for weighted rating
         self._m = self._md_df['vote_count'].quantile(self._vote_count_cut_off_quantile)
         self._C = self._md_df['vote_average'].mean()
 
+        # Clean dataset
+        self._df = self._df_clean()
 
         self._all_genres = self._md_df['genres'].explode().unique()
 
@@ -42,9 +41,11 @@ class ContentBased:
         self._all_supported_directors, self._director_index_map = self._get_supported_directors()
 
 
-        self._movies_latent_feature = self._get_movie_latent_vector(3, self._df)
+        print("[CONTENT_BASED] Getting movies latent vectors.")
+        self._movies_latent_feature = self._get_movie_latent_vector(self._df)
+        print("[CONTENT_BASED] DONE!")
 
-    def recommend(self, movie_ids, ratings):
+    def recommend(self, movie_ids, ratings, n_top_movies=50):
         if len(movie_ids) != len(ratings):
             raise ValueError('number of movie ids and ratings are not the same !')
         
@@ -71,7 +72,7 @@ class ContentBased:
         # TODO: OKAY THIS CONSTANT
         alpha = 0.25
         results_df['ranking_metrics'] = (results_df['wr'] / 10) * alpha + results_df['similarity'] * (1 - alpha)
-        return results_df
+        return results_df[:n_top_movies]
 
     def _get_user_latent_vector(self, top_k, user_df):
         user = user_df.copy()
@@ -82,7 +83,7 @@ class ContentBased:
 
         # Get movie latent features for user rates
         user_movie_rates = self._df[self._df['id'].isin(user['movieId'])]
-        user_movie_latents = self._get_movie_latent_vector(top_k, user_movie_rates)
+        user_movie_latents = self._get_movie_latent_vector(user_movie_rates, top_k)
 
         # If all of the rates are equal don't get them a weight
         if user['rating'].std() != 0:
@@ -176,13 +177,13 @@ class ContentBased:
         return (v/(v+self._m) * R) + (self._m/(self._m+v) * self._C)
     
 
-    def _get_top_k_keywords(top_k, keyword_df):
+    def _get_top_k_keywords(self, top_k, keyword_df):
         keyword_df = keyword_df.copy()
         # Add underscore between same group keyword to they treated as one token
         keyword_df = keyword_df.apply(lambda x: " ".join(['_'.join(i['name'].split()) for i in x][:top_k]))
         return keyword_df
     
-    def get_movie_textual_data(overview_df, tagline_df):
+    def _get_movie_textual_data(self, overview_df, tagline_df):
         result_df = overview_df.fillna(' ') + ' ' + tagline_df.fillna(' ')
         return result_df
 
@@ -204,7 +205,7 @@ class ContentBased:
 
     def _get_supported_directors(self, directors_n_movies_quantile=0.995):
         # This function is like the supported casts
-        directors_n_movies = credits['crew'].apply(lambda x: [i['id'] for i in x if i['job'] == 'Director']).explode().value_counts()
+        directors_n_movies = self._credits_df['crew'].apply(lambda x: [i['id'] for i in x if i['job'] == 'Director']).explode().value_counts()
 
         director_movies_cut_off = directors_n_movies.quantile(directors_n_movies_quantile)
 
@@ -261,7 +262,7 @@ class ContentBased:
         self._credits_clean()
         self._keywords_clean()
 
-        self._md_df['wr'] = self._md.apply(self._weighted_rating, axis=1)
+        self._md_df['wr'] = self._md_df.apply(self._weighted_rating, axis=1)
 
         df = pd.merge(self._md_df, self._credits_df).merge(self._keywords_df)
 
@@ -273,7 +274,7 @@ class ContentBased:
     def _md_clean(self):
         eval_columns = ['belongs_to_collection', 'production_companies', 'production_countries', 'spoken_languages', 'genres']
         for eval_column in eval_columns:
-            self._self._md_df[eval_column] = self._self._md_df[eval_column].fillna('[]').apply(literal_eval)
+            self._md_df[eval_column] = self._md_df[eval_column].fillna('[]').apply(literal_eval)
             self._md_df[eval_column] = self._md_df[eval_column].apply(lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
 
         bad_data = self._md_df[self._md_df['imdb_id'] == '0'].index
